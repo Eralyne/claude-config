@@ -251,13 +251,18 @@ Use HTML comment markers for idempotent updates:
 
 ### Phase 7: Content Accuracy
 
-After structure is fixed, run `incoherence` to verify content accuracy:
+After structure is fixed, use AskUserQuestion to offer the incoherence check:
 
 ```
-/incoherence
+Doc-sync has fixed documentation structure.
+
+Would you like to run a coherence check?
+- Yes: Run comprehensive 21-step analysis to verify documentation matches code
+- No: Skip (structure is synced, content accuracy not verified)
 ```
 
-Doc-sync fixes **structure**. Incoherence verifies **content** matches code.
+The incoherence skill is thorough but long. It detects contradictions between
+documentation and implementation, stale claims, and content drift.
 
 ## Exclusions
 
