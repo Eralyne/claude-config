@@ -5,9 +5,21 @@ description: Synchronizes docs across a repository. Use when user asks to sync d
 
 # Doc Sync
 
-Maintains the CLAUDE.md navigation hierarchy and README.md invisible knowledge
-docs across a repository. This skill is self-contained and performs all
-documentation work directly.
+Maintains the CLAUDE.md navigation hierarchy, README.md invisible knowledge docs,
+and **smart skill embedding** across a repository. This skill is self-contained
+and performs all documentation work directly.
+
+## Skill Embedding
+
+Doc-sync intelligently embeds relevant skill descriptions in CLAUDE.md/AGENTS.md.
+**You (the LLM) do the matching** - no hardcoded patterns.
+
+**Why this matters:** Passive context (always available) outperforms on-demand
+retrieval. But loading ALL skills pollutes context. Smart embedding solves this:
+only skills relevant to the project are embedded.
+
+**Agent file priority:** If CLAUDE.md contains `@AGENTS.md`, embed skills in
+AGENTS.md instead (agent-agnostic convention).
 
 ## Documentation Conventions
 
@@ -30,6 +42,88 @@ Determine scope FIRST:
 For REPOSITORY-WIDE scope, perform a full audit. For narrower scopes, operate only within the specified boundary.
 
 ## Workflow
+
+### Phase 0: Skill Discovery
+
+**Step 1: Read the codebase**
+
+Before suggesting skills, understand what the project actually contains:
+
+1. Read dependency files (`package.json`, `composer.json`, `requirements.txt`, etc.)
+2. Explore the directory structure to understand the architecture
+3. Note key technologies, frameworks, patterns, and problem domains
+
+Build a mental model of the project's tech stack and what kinds of skills would help.
+
+**Step 2: Search skills.sh**
+
+For each significant technology or pattern identified, search the skills.sh ecosystem:
+
+```bash
+npx skills find "laravel"
+npx skills find "surrealdb"
+npx skills find "llm pipeline"
+```
+
+This queries the vercel-labs/skills registry for relevant skills. The latency is
+worth it - these are curated skills that solve real problems.
+
+**Step 3: Match intelligently**
+
+Review the search results against your understanding of the codebase. A skill is
+relevant if:
+
+- The project uses the technology the skill targets
+- The skill solves problems this project is likely to encounter
+- For compound skills, the project uses ALL bundled technologies
+
+Filter out skills that don't actually apply.
+
+**Step 4: Suggest skills to user**
+
+Present ALL relevant skills via AskUserQuestion - don't artificially limit to 3.
+A complex codebase may benefit from 5-10+ skills.
+
+```
+Based on this codebase (SurrealDB + LLM pipelines + FastAPI + Python), these skills may help:
+
+1. surrealdb - SurrealDB patterns and queries
+2. surrealdb-idempotent-schema - Make schema migrations repeatable
+3. llm-structured-output-failure - Debug LLM output parsing failures
+4. llm-pipeline-cost-diagnosis - Track per-stage API costs
+5. llm-pipeline-schema-field-drift - Fix silently dropped fields
+6. fastapi-templates - FastAPI endpoint patterns
+7. python-dict-get-json-null - Fix NoneType iteration errors
+
+Install? (Select numbers, "all", or "skip")
+```
+
+**Step 5: Install confirmed skills**
+
+Before installing, ask which agents via AskUserQuestion (multiSelect: true):
+
+```
+Which agents should these skills be available to?
+☐ Claude
+☐ Codex
+☐ Cursor
+☐ Gemini
+☐ GitHub Copilot
+☐ OpenCode
+☐ Windsurf
+```
+
+Then install with `-a` flag for each selected agent:
+
+```bash
+# Single agent
+npx skills add <skill-name> -a claude-code
+
+# Multiple agents
+npx skills add <skill-name> -a claude-code -a cursor -a opencode
+```
+
+Do NOT use `-y` - it installs for ALL agents which is usually too broad.
 
 ### Phase 1: Discovery
 
@@ -135,6 +229,95 @@ After all updates complete, verify:
 7. README.md exists wherever invisible knowledge was identified
 8. README.md files are self-contained (no external authoritative references)
 
+### Phase 6: Skill Embedding
+
+Embed skill references in agent files. Use AGENTS.md if CLAUDE.md contains `@AGENTS.md`,
+otherwise use CLAUDE.md.
+
+**CRITICAL: Only embed PROJECT-level skills**
+
+Only embed skills installed in `.agents/skills/`. Do NOT embed global skills.
+
+```bash
+ls .agents/skills/
+```
+
+**Step 1: Analyze ALL subdirectories**
+
+Go through EVERY subdirectory and determine which project skills are relevant
+based on the technology/code in that directory. Read the skill descriptions
+and match against what each directory contains.
+
+Example:
+- `app/pipelines/` contains LLM pipeline code → `langgraph-docs` is relevant
+- `database/` contains SurrealDB schemas → `surrealdb` is relevant
+- `tests/` contains test utilities → `test-report-debugging` is relevant
+- `app/api/` contains FastAPI endpoints → `fastapi-templates` is relevant
+
+**Step 2: Confirm coverage**
+
+Double-check: did you miss any directories? List out your matches:
+
+```
+Directory skill matches:
+- app/pipelines/: langgraph-docs, llm-structured-output-failure
+- app/api/: fastapi-templates
+- database/: surrealdb
+- database/migrations/: surrealdb
+- tests/: test-report-debugging
+- tests/integration/: test-report-debugging, surrealdb
+...
+```
+
+Verify every code directory has been considered.
+
+**Step 3: Embed in subdirectories**
+
+Add a `## Skills` section to each subdirectory's agent file with its relevant skills:
+
+```markdown
+## Skills
+
+| Skill | When to use |
+|-------|-------------|
+| `surrealdb` | SurrealDB schema, queries |
+```
+
+**Step 4: Calculate promotion threshold**
+
+Now count frequency across all subdirectories:
+
+```
+Skill frequency:
+- surrealdb: 8/10 directories (80%) → PROMOTE
+- langgraph-docs: 3/10 directories (30%) → keep in subdirs
+- fastapi-templates: 2/10 directories (20%) → keep in subdirs
+- test-report-debugging: 4/10 directories (40%) → keep in subdirs
+```
+
+Skills at >80% should be promoted to root only.
+
+**Step 5: Adjust for promotion**
+
+For any promoted skills:
+1. REMOVE them from all subdirectory agent files
+2. ADD them to root agent file only
+
+**Step 6: Embed at root**
+
+Root gets:
+- All promoted skills (>80% frequency)
+- Any skills that don't fit specific subdirectories
+
+```markdown
+## Skills
+
+| Skill | When to use |
+|-------|-------------|
+| `surrealdb` | SurrealDB schema, queries (project-wide) |
+| `langgraph-docs` | LangGraph agent patterns |
+```
+
 ## Output Format
 
 ```
@@ -145,19 +328,29 @@ After all updates complete, verify:
 ### Changes Made
 - CREATED: [list of new CLAUDE.md files]
 - UPDATED: [list of modified CLAUDE.md files]
-- MIGRATED: [list of content moved from CLAUDE.md to README.md]
-- CREATED: [list of new README.md files]
-- FLAGGED: [any issues requiring human decision]
+- MIGRATED: [list of content moved to README.md]
+- SKILLS: [count] skills embedded
 
 ### Verification
 - Directories audited: [count]
-- CLAUDE.md coverage: [count]/[total] (100%)
-- CLAUDE.md format: [count] pure index / [count] needed migration
-- Drift detected: [count] entries fixed
-- Content migrations: [count] (prose moved to README.md)
-- README.md files: [count] (wherever invisible knowledge exists)
-- Self-contained: [YES/NO] (no external authoritative references)
+- CLAUDE.md coverage: [count]/[total]
+- Drift fixed: [count] entries
 ```
+
+### Phase 7: Content Accuracy
+
+After structure is fixed, use AskUserQuestion to offer the incoherence check:
+
+```
+Doc-sync has fixed documentation structure.
+
+Would you like to run a coherence check?
+- Yes: Run comprehensive 21-step analysis to verify documentation matches code
+- No: Skip (structure is synced, content accuracy not verified)
+```
+
+The incoherence skill is thorough but long. It detects contradictions between
+documentation and implementation, stale claims, and content drift.
 
 ## Exclusions
 
