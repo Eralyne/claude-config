@@ -113,10 +113,14 @@ Which agents should these skills be available to?
 ☐ Windsurf
 ```
 
-Then install with the selected agents:
+Then install with `-a` flag for each selected agent:
 
 ```bash
-npx skills add <skill-name> --agents claude,cursor,gemini
+# Single agent
+npx skills add <skill-name> -a claude-code
+
+# Multiple agents
+npx skills add <skill-name> -a claude-code -a cursor -a opencode
 ```
 
 Do NOT use `-y` - it installs for ALL agents which is usually too broad.
@@ -238,26 +242,38 @@ Only embed skills installed in `.agents/skills/`. Do NOT embed global skills.
 ls .agents/skills/
 ```
 
-**Step 1: Match skills to directories**
+**Step 1: Analyze ALL subdirectories**
 
-For each subdirectory, determine which project skills are relevant based on the
-technology/code in that directory. Read the skill descriptions and match against
-what the directory contains.
+Go through EVERY subdirectory and determine which project skills are relevant
+based on the technology/code in that directory. Read the skill descriptions
+and match against what each directory contains.
 
 Example:
 - `app/pipelines/` contains LLM pipeline code → `langgraph-docs` is relevant
 - `database/` contains SurrealDB schemas → `surrealdb` is relevant
 - `tests/` contains test utilities → `test-report-debugging` is relevant
+- `app/api/` contains FastAPI endpoints → `fastapi-templates` is relevant
 
-**Step 2: Calculate frequency**
+**Step 2: Confirm coverage**
 
-Count how many directories each skill matches. If a skill matches >80% of
-directories, it should be promoted to root only (don't embed in subdirectories).
+Double-check: did you miss any directories? List out your matches:
+
+```
+Directory skill matches:
+- app/pipelines/: langgraph-docs, llm-structured-output-failure
+- app/api/: fastapi-templates
+- database/: surrealdb
+- database/migrations/: surrealdb
+- tests/: test-report-debugging
+- tests/integration/: test-report-debugging, surrealdb
+...
+```
+
+Verify every code directory has been considered.
 
 **Step 3: Embed in subdirectories**
 
-For each subdirectory with relevant skills (that aren't promoted), add or update
-a `## Skills` section:
+Add a `## Skills` section to each subdirectory's agent file with its relevant skills:
 
 ```markdown
 ## Skills
@@ -267,7 +283,27 @@ a `## Skills` section:
 | `surrealdb` | SurrealDB schema, queries |
 ```
 
-**Step 4: Embed at root**
+**Step 4: Calculate promotion threshold**
+
+Now count frequency across all subdirectories:
+
+```
+Skill frequency:
+- surrealdb: 8/10 directories (80%) → PROMOTE
+- langgraph-docs: 3/10 directories (30%) → keep in subdirs
+- fastapi-templates: 2/10 directories (20%) → keep in subdirs
+- test-report-debugging: 4/10 directories (40%) → keep in subdirs
+```
+
+Skills at >80% should be promoted to root only.
+
+**Step 5: Adjust for promotion**
+
+For any promoted skills:
+1. REMOVE them from all subdirectory agent files
+2. ADD them to root agent file only
+
+**Step 6: Embed at root**
 
 Root gets:
 - All promoted skills (>80% frequency)
@@ -278,9 +314,8 @@ Root gets:
 
 | Skill | When to use |
 |-------|-------------|
+| `surrealdb` | SurrealDB schema, queries (project-wide) |
 | `langgraph-docs` | LangGraph agent patterns |
-| `surrealdb` | SurrealDB schema, queries |
-| `test-report-debugging` | Integration test debugging |
 ```
 
 ## Output Format
