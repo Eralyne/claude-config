@@ -12,9 +12,8 @@ Sub-agents invoke this script immediately upon receiving their prompt.
 The script provides step-by-step guidance; the agent follows exactly.
 """
 
-import sys
 
-from skills.lib.workflow.ast import W, XMLRenderer, render, TextNode
+from skills.lib.workflow.ast import W, XMLRenderer, render
 from skills.lib.conventions import get_convention
 from skills.lib.workflow.types import ResourceProvider
 
@@ -92,13 +91,24 @@ STEPS = {
 }
 
 
-def step_1_handler(step_info, total_steps, module_path, qr_iteration, qr_fail):
+def step_1_handler(
+    step_info, total_steps, module_path, qr_iteration, qr_fail, **kwargs
+):
     """Handler for step 1 (normal or fix mode)."""
     if qr_fail:
-        banner = render(W.el("state_banner", checkpoint="DEV-FILL-DIFFS", iteration=str(qr_iteration), mode="fix").build(), XMLRenderer())
+        banner = render(
+            W.el(
+                "state_banner",
+                checkpoint="DEV-FILL-DIFFS",
+                iteration=str(qr_iteration),
+                mode="fix",
+            ).build(),
+            XMLRenderer(),
+        )
         return {
             "title": "Fix QR Issues",
-            "actions": [banner, ""] + [
+            "actions": [banner, ""]
+            + [
                 "FIX MODE: QR-CODE found issues in your diffs.",
                 "",
                 "Find QR_REPORT_PATH in the <context> section of your dispatch.",
@@ -118,10 +128,16 @@ def step_1_handler(step_info, total_steps, module_path, qr_iteration, qr_fail):
             "next": None,
         }
 
-    banner = render(W.el("state_banner", checkpoint="DEV-FILL-DIFFS", iteration="1", mode="work").build(), XMLRenderer())
+    banner = render(
+        W.el(
+            "state_banner", checkpoint="DEV-FILL-DIFFS", iteration="1", mode="work"
+        ).build(),
+        XMLRenderer(),
+    )
     return {
         "title": "Task Description",
-        "actions": [banner, ""] + [
+        "actions": [banner, ""]
+        + [
             "TASK: Convert Code Intent to Code Changes (unified diffs).",
             "",
             "You are filling diffs AFTER planning, BEFORE TW review.",
@@ -196,7 +212,9 @@ def generic_step_handler(step_info, total_steps, module_path, **kwargs):
     result = {"title": step_info["title"], "actions": step_info["actions"]}
     step = kwargs.get("step", 1)
     if step < total_steps:
-        result["next"] = f"python3 -m {module_path} --step {step + 1} --total-steps {total_steps}"
+        result["next"] = (
+            f"python3 -m {module_path} --step {step + 1} --total-steps {total_steps}"
+        )
     else:
         result["next"] = "Return result to orchestrator. Sub-agent task complete."
     return result
@@ -209,7 +227,11 @@ STEP_HANDLERS = {
 
 
 def get_step_guidance(
-    step: int, total_steps: int, module_path: str, provider: ResourceProvider = None, **kwargs
+    step: int,
+    total_steps: int,
+    module_path: str,
+    provider: ResourceProvider = None,
+    **kwargs,
 ) -> dict:
     """Return guidance for the given step.
 
@@ -224,10 +246,21 @@ def get_step_guidance(
 
     step_info = STEPS.get(step, {"title": "Unknown", "actions": ["Check step number"]})
     handler = STEP_HANDLERS.get(step, generic_step_handler)
-    return handler(step_info, total_steps, module_path, qr_iteration=qr_iteration,
-                   qr_fail=qr_fail, step=step)
+    return handler(
+        step_info,
+        total_steps,
+        module_path,
+        qr_iteration=qr_iteration,
+        qr_fail=qr_fail,
+        step=step,
+    )
 
 
 if __name__ == "__main__":
     from skills.lib.workflow.cli import mode_main
-    mode_main(__file__, get_step_guidance, "Dev-Fill-Diffs: Code Intent to Code Changes workflow")
+
+    mode_main(
+        __file__,
+        get_step_guidance,
+        "Dev-Fill-Diffs: Code Intent to Code Changes workflow",
+    )
