@@ -45,54 +45,76 @@ For REPOSITORY-WIDE scope, perform a full audit. For narrower scopes, operate on
 
 ### Phase 0: Skill Discovery
 
-**Step 1: Read project dependencies**
+**Step 1: Read the codebase**
 
-Read the project's dependency files to understand the tech stack:
-- `package.json` (Node/JS/TS projects)
-- `composer.json` (PHP projects)
-- `requirements.txt` / `pyproject.toml` (Python projects)
-- `Cargo.toml` (Rust projects)
-- `go.mod` (Go projects)
+Before suggesting skills, understand what the project actually contains:
 
-**Step 2: Scan available skills**
+1. Read dependency files (`package.json`, `composer.json`, `requirements.txt`, etc.)
+2. Explore the directory structure to understand the architecture
+3. Note key technologies, frameworks, patterns, and problem domains
+
+Build a mental model of the project's tech stack and what kinds of skills would help.
+
+**Step 2: Search skills.sh**
+
+For each significant technology or pattern identified, search the skills.sh ecosystem:
 
 ```bash
-python3 ~/.claude/skills/doc-sync/scripts/match_skills.py . --global
+npx skills find "laravel"
+npx skills find "surrealdb"
+npx skills find "llm pipeline"
 ```
 
-This returns a JSON list of available skills with names and descriptions.
+This queries the vercel-labs/skills registry for relevant skills. The latency is
+worth it - these are curated skills that solve real problems.
 
-**Step 3: Match skills intelligently**
+**Step 3: Match intelligently**
 
-Using your understanding of the project dependencies AND each skill's description,
-identify which skills are relevant. Consider:
+Review the search results against your understanding of the codebase. A skill is
+relevant if:
 
-- Does the skill mention technologies the project uses?
-- Would the skill help with this project's stack?
-- For compound skills (e.g., "tailwind-v4-shadcn"), does the project use ALL
-  the technologies bundled in that skill?
+- The project uses the technology the skill targets
+- The skill solves problems this project is likely to encounter
+- For compound skills, the project uses ALL bundled technologies
+
+Filter out skills that don't actually apply.
 
 **Step 4: Suggest skills to user**
 
-If no project-level skills exist (`.claude/skills/` is empty), present suggestions
-using AskUserQuestion:
+Present relevant skills via AskUserQuestion:
 
 ```
-Found relevant skills in your global collection:
+Based on this codebase (SurrealDB + LLM pipelines + Python), these skills may help:
 
-1. vue-best-practices - Vue 3 Composition API patterns
-2. laravel-11-12-app-guidelines - Laravel application guidelines
+1. surrealdb-idempotent-schema - Make schema migrations repeatable
+2. llm-structured-output-failure - Debug LLM output parsing failures
+3. llm-pipeline-cost-diagnosis - Track per-stage API costs
 
-Copy to project? (This makes them available to your team)
+Install? (Select numbers, "all", or "skip")
 ```
 
 **Step 5: Install confirmed skills**
 
-For skills user confirms, copy from global to project:
-- Canonical copy: `.agents/skills/<skill-name>/`
-- Symlink: `.claude/skills/<skill-name>` → `../../.agents/skills/<skill-name>`
+Before installing, ask which agents via AskUserQuestion (multiSelect: true):
 
-This follows the vercel-labs/skills structure for agent-agnostic skill storage.
+```
+Which agents should these skills be available to?
+☐ Claude
+☐ Codex
+☐ Cursor
+☐ Gemini
+☐ GitHub Copilot
+☐ OpenCode
+☐ Windsurf
+```
+
+Then install with the selected agents:
+
+```bash
+npx skills add <skill-name> --agents claude,cursor,gemini
+```
+
+Do NOT use `-y` - it installs for ALL agents which is usually too broad.
 
 ### Phase 1: Discovery
 
