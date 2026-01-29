@@ -11,14 +11,15 @@ and performs all documentation work directly.
 
 ## Skill Embedding
 
-Doc-sync now includes smart skill embedding: it detects your project's technology
-stack and embeds relevant skill descriptions (not full content) directly in
-CLAUDE.md. This provides passive skill awareness without context pollution.
+Doc-sync intelligently embeds relevant skill descriptions in CLAUDE.md/AGENTS.md.
+**You (the LLM) do the matching** - no hardcoded patterns.
 
-**Why this matters:** Vercel's research shows passive context (always available)
-outperforms on-demand retrieval (agent must decide to load). But loading ALL
-skills pollutes context. Smart embedding solves this: only skills relevant to
-YOUR project are embedded.
+**Why this matters:** Passive context (always available) outperforms on-demand
+retrieval. But loading ALL skills pollutes context. Smart embedding solves this:
+only skills relevant to the project are embedded.
+
+**Agent file priority:** If CLAUDE.md contains `@AGENTS.md`, embed skills in
+AGENTS.md instead (agent-agnostic convention).
 
 ## Documentation Conventions
 
@@ -42,46 +43,56 @@ For REPOSITORY-WIDE scope, perform a full audit. For narrower scopes, operate on
 
 ## Workflow
 
-### Phase 0: Technology Detection (NEW)
+### Phase 0: Skill Discovery
 
-Detect the project's technology stack to inform skill matching.
+**Step 1: Read project dependencies**
 
-```bash
-python3 ~/.claude/skills/doc-sync/scripts/detect_tech.py . --format markdown
-```
+Read the project's dependency files to understand the tech stack:
+- `package.json` (Node/JS/TS projects)
+- `composer.json` (PHP projects)
+- `requirements.txt` / `pyproject.toml` (Python projects)
+- `Cargo.toml` (Rust projects)
+- `go.mod` (Go projects)
 
-This scans for:
-- Languages (Python, TypeScript, Go, Rust, etc.)
-- Frameworks (Next.js, FastAPI, Django, React, etc.)
-- Databases (Prisma, PostgreSQL, MongoDB, Redis, etc.)
-- AI/ML tools (LangChain, OpenAI, Anthropic, HuggingFace)
-- Testing frameworks (pytest, Jest, Playwright)
-- DevOps tools (Docker, Kubernetes, GitHub Actions)
-
-Record the detected technologies for Phase 0.5.
-
-### Phase 0.5: Skill Discovery (NEW)
-
-Match detected technologies to relevant skills from local and ecosystem sources.
+**Step 2: Scan available skills**
 
 ```bash
-python3 ~/.claude/skills/doc-sync/scripts/match_skills.py . --format markdown
+python3 ~/.claude/skills/doc-sync/scripts/match_skills.py . --global
 ```
 
-This:
-1. Scans `~/.claude/skills/` and `.claude/skills/` for local skills
-2. Queries skills.sh for ecosystem skills matching detected technologies
-3. Scores relevance based on technology-skill mappings
-4. Returns prioritized list of skills (max 15 by default)
+This returns a JSON list of available skills with names and descriptions.
 
-**Output includes:**
-- Skill descriptions (for passive embedding in CLAUDE.md)
-- Trigger conditions (when skill should activate)
-- Install commands (for skills.sh skills not yet installed)
+**Step 3: Match skills intelligently**
 
-**User confirmation required** for:
-- Installing suggested skills.sh skills
-- Overriding max skill count
+Using your understanding of the project dependencies AND each skill's description,
+identify which skills are relevant. Consider:
+
+- Does the skill mention technologies the project uses?
+- Would the skill help with this project's stack?
+- For compound skills (e.g., "tailwind-v4-shadcn"), does the project use ALL
+  the technologies bundled in that skill?
+
+**Step 4: Suggest skills to user**
+
+If no project-level skills exist (`.claude/skills/` is empty), present suggestions
+using AskUserQuestion:
+
+```
+Found relevant skills in your global collection:
+
+1. vue-best-practices - Vue 3 Composition API patterns
+2. laravel-11-12-app-guidelines - Laravel application guidelines
+
+Copy to project? (This makes them available to your team)
+```
+
+**Step 5: Install confirmed skills**
+
+For skills user confirms, copy from global to project:
+- Canonical copy: `.agents/skills/<skill-name>/`
+- Symlink: `.claude/skills/<skill-name>` → `../../.agents/skills/<skill-name>`
+
+This follows the vercel-labs/skills structure for agent-agnostic skill storage.
 
 ### Phase 1: Discovery
 
@@ -187,95 +198,37 @@ After all updates complete, verify:
 7. README.md exists wherever invisible knowledge was identified
 8. README.md files are self-contained (no external authoritative references)
 
-### Phase 6: Skill Index Embedding (NEW)
+### Phase 6: Skill Embedding
 
-Skills are embedded at **two levels** with different scopes:
+Embed skill references in the agent file (AGENTS.md if referenced, else CLAUDE.md).
 
-#### 6a. Root CLAUDE.md - Project-wide + Technology Skills
+**Skill categories:**
 
-Root CLAUDE.md gets both skill categories:
+1. **Project-wide skills** (workflow/methodology): Skills like `solution-design`,
+   `problem-analysis`, `planner` that apply to any project
+2. **Technology skills**: Skills matching the project's specific tech stack
 
-1. **Project-wide skills** (workflow/methodology): `solution-design`, `problem-analysis`,
-   `planner`, `deepthink`, `codebase-analysis`, `refactor`, `claudeception`
-2. **Technology skills**: Based on detected project stack (Laravel, Vue, Tailwind, etc.)
+**Embedding format:**
 
-```markdown
-## Project Skills
-
-Workflow and methodology skills available project-wide.
-
-| Skill | When to use |
-|-------|-------------|
-| `solution-design` | Need solution options for a defined problem |
-| `problem-analysis` | Root cause investigation |
-| `planner` | Complex multi-step tasks |
-
-## Technology Skills
-
-Skills matched to this project's technology stack.
-
-| Skill | Triggers | Source |
-|-------|----------|--------|
-| `laravel-11-12-app-guidelines` | Working with Laravel 11/12 applications | local |
-| `vue-best-practices` | Vue.js components, Composition API | local |
-| `tailwind-v4-shadcn` | Tailwind v4 setup, shadcn/ui patterns | local |
-```
-
-#### 6b. Directory CLAUDE.md - Technology Skills Only
-
-Subdirectory CLAUDE.md files get **only technology skills** that match their local tech:
-
-```bash
-# Detect directory-specific technologies
-python3 ~/.claude/skills/doc-sync/scripts/match_skills.py . --tree
-```
-
-Example output for a Laravel + Vue project:
-
-| Directory | Technologies | Skills |
-|-----------|-------------|--------|
-| `/app/Http/Controllers/` | php, laravel | `laravel-11-12-app-guidelines` |
-| `/resources/js/Components/` | vue, laravel | `vue-best-practices`, `ui-skills` |
-| `/resources/css/` | tailwind | `tailwind-v4-shadcn` |
-
-**Directory skill format (compact):**
+Use HTML comment markers for idempotent updates:
 
 ```markdown
+<!-- doc-sync:skills-start -->
 ## Skills
 
 | Skill | When to use |
 |-------|-------------|
-| `vue-best-practices` | Vue components, Composition API, <script setup> |
-| `ui-skills` | Building interfaces, component patterns |
+| `vue-best-practices` | Vue components, Composition API |
+| `laravel-11-12-app-guidelines` | Laravel controllers, Eloquent |
+<!-- doc-sync:skills-end -->
 ```
 
-**Skill embedding rules:**
+**Embedding rules:**
 
-1. Root CLAUDE.md: Project-wide + technology skills (max 15 total)
-2. Directory CLAUDE.md: Technology skills only (max 5 per directory)
-3. Embed descriptions only (~100 tokens each), not full skill content
-4. Project skills are classified in `SKILL_SCOPES` in `match_skills.py`
-5. Skills.sh suggestions appear only at root level
-
-### Phase 7: Skills.sh Recommendations (NEW)
-
-Present skills.sh installation suggestions to user for confirmation:
-
-```
-## Suggested Skills.sh Installations
-
-The following skills match your detected technologies but aren't installed locally:
-
-1. vercel-labs/next-cache (Next.js 16 caching APIs)
-   Install: npx skills add vercel-labs/next-cache -g -y
-
-2. anthropics/claude-mcp (Claude MCP integration patterns)
-   Install: npx skills add anthropics/claude-mcp -g -y
-
-Would you like to install any of these? [all/some/none]
-```
-
-Wait for user confirmation before running install commands.
+1. Root: Both project-wide + technology skills (max 15)
+2. Subdirectories: Only technology skills relevant to that directory (max 5)
+3. Embed descriptions only, not full skill content
+4. Skills appearing in >80% of directories should be promoted to root only
 
 ## Output Format
 
@@ -284,38 +237,27 @@ Wait for user confirmation before running install commands.
 
 ### Scope: [REPOSITORY-WIDE | directory path]
 
-### Technology Stack
-- Languages: [detected languages with confidence]
-- Frameworks: [detected frameworks]
-- Databases: [detected databases/ORMs]
-- Other: [AI/ML, testing, devops tools]
-
-### Skills Embedded
-- Local skills matched: [count] / [total local skills]
-- Skills.sh suggestions: [count] (pending user confirmation)
-- Token budget: ~[X] tokens for skill descriptions
-
 ### Changes Made
 - CREATED: [list of new CLAUDE.md files]
 - UPDATED: [list of modified CLAUDE.md files]
-- MIGRATED: [list of content moved from CLAUDE.md to README.md]
-- CREATED: [list of new README.md files]
-- SKILL_INDEX: [EMBEDDED in root CLAUDE.md | UPDATED | UNCHANGED]
-- FLAGGED: [any issues requiring human decision]
+- MIGRATED: [list of content moved to README.md]
+- SKILLS: [count] skills embedded
 
 ### Verification
 - Directories audited: [count]
-- CLAUDE.md coverage: [count]/[total] (100%)
-- CLAUDE.md format: [count] pure index / [count] needed migration
-- Drift detected: [count] entries fixed
-- Content migrations: [count] (prose moved to README.md)
-- README.md files: [count] (wherever invisible knowledge exists)
-- Self-contained: [YES/NO] (no external authoritative references)
-- Skill index: [VALID | NEEDS_UPDATE | MISSING]
-
-### Suggested Skills.sh Installations
-[List of recommended skills with install commands, if any]
+- CLAUDE.md coverage: [count]/[total]
+- Drift fixed: [count] entries
 ```
+
+### Phase 7: Content Accuracy
+
+After structure is fixed, run `incoherence` to verify content accuracy:
+
+```
+/incoherence
+```
+
+Doc-sync fixes **structure**. Incoherence verifies **content** matches code.
 
 ## Exclusions
 
