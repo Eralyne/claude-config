@@ -273,14 +273,22 @@ Verify every code directory has been considered.
 
 **Step 3: Embed in subdirectories**
 
-Add a `## Skills` section to each subdirectory's agent file with its relevant skills:
+For each subdirectory's agent file:
+1. FIND any existing `## Skills` or `## REQUIRED SKILLS` section (anywhere in file)
+2. REMOVE it completely (including old markers like `<!-- doc-sync:skills-* -->`)
+3. ADD `## REQUIRED SKILLS` at the TOP of the file (immediately after the title)
+
+The skills section MUST be at the top - not buried at the bottom.
+
+Format as blocking instructions with explicit Skill() calls:
 
 ```markdown
-## Skills
+## REQUIRED SKILLS
 
-| Skill | When to use |
-|-------|-------------|
-| `surrealdb` | SurrealDB schema, queries |
+Before ANY work in this directory, load these skills:
+- Skill("surrealdb")
+
+Do not proceed until loaded.
 ```
 
 **Step 4: Calculate promotion threshold**
@@ -305,17 +313,27 @@ For any promoted skills:
 
 **Step 6: Embed at root**
 
+For the root agent file:
+1. FIND any existing `## Skills` or `## REQUIRED SKILLS` section (anywhere in file)
+2. REMOVE it completely (including old markers like `<!-- doc-sync:skills-* -->`)
+3. ADD `## REQUIRED SKILLS` at the TOP of the file (immediately after the title)
+
+The skills section MUST be at the top - not buried at the bottom.
+
 Root gets:
 - All promoted skills (>80% frequency)
 - Any skills that don't fit specific subdirectories
 
-```markdown
-## Skills
+Format as blocking instructions:
 
-| Skill | When to use |
-|-------|-------------|
-| `surrealdb` | SurrealDB schema, queries (project-wide) |
-| `langgraph-docs` | LangGraph agent patterns |
+```markdown
+## REQUIRED SKILLS
+
+Before ANY work in this project, load these skills:
+- Skill("surrealdb")
+- Skill("langgraph-docs")
+
+Do not proceed until loaded.
 ```
 
 ## Output Format
