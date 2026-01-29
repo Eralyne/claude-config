@@ -222,17 +222,36 @@ After all updates complete, verify:
 
 ### Phase 6: Skill Embedding
 
-Embed skill references in the agent file (AGENTS.md if referenced, else CLAUDE.md).
+Embed skill references in agent files. Use AGENTS.md if CLAUDE.md contains `@AGENTS.md`,
+otherwise use CLAUDE.md.
 
-**Skill categories:**
+**CRITICAL: Only embed PROJECT-level skills**
 
-1. **Project-wide skills** (workflow/methodology): Skills like `solution-design`,
-   `problem-analysis`, `planner` that apply to any project
-2. **Technology skills**: Skills matching the project's specific tech stack
+Only embed skills installed in `.agents/skills/`. Do NOT embed global skills.
 
-**Embedding format:**
+```bash
+ls .agents/skills/
+```
 
-Use HTML comment markers for idempotent updates:
+**Step 1: Match skills to directories**
+
+For each subdirectory, determine which project skills are relevant based on the
+technology/code in that directory. Read the skill descriptions and match against
+what the directory contains.
+
+Example:
+- `app/pipelines/` contains LLM pipeline code → `langgraph-docs` is relevant
+- `database/` contains SurrealDB schemas → `surrealdb` is relevant
+- `tests/` contains test utilities → `test-report-debugging` is relevant
+
+**Step 2: Calculate frequency**
+
+Count how many directories each skill matches. If a skill matches >80% of
+directories, it should be promoted to root only (don't embed in subdirectories).
+
+**Step 3: Embed in subdirectories**
+
+For each subdirectory with relevant skills (that aren't promoted), embed:
 
 ```markdown
 <!-- doc-sync:skills-start -->
@@ -240,17 +259,27 @@ Use HTML comment markers for idempotent updates:
 
 | Skill | When to use |
 |-------|-------------|
-| `vue-best-practices` | Vue components, Composition API |
-| `laravel-11-12-app-guidelines` | Laravel controllers, Eloquent |
+| `surrealdb` | SurrealDB schema, queries |
 <!-- doc-sync:skills-end -->
 ```
 
-**Embedding rules:**
+**Step 4: Embed at root**
 
-1. Root: Both project-wide + technology skills (max 15)
-2. Subdirectories: Only technology skills relevant to that directory (max 5)
-3. Embed descriptions only, not full skill content
-4. Skills appearing in >80% of directories should be promoted to root only
+Root gets:
+- All promoted skills (>80% frequency)
+- Any skills that don't fit specific subdirectories
+
+```markdown
+<!-- doc-sync:skills-start -->
+## Skills
+
+| Skill | When to use |
+|-------|-------------|
+| `langgraph-docs` | LangGraph agent patterns |
+| `surrealdb` | SurrealDB schema, queries |
+| `test-report-debugging` | Integration test debugging |
+<!-- doc-sync:skills-end -->
+```
 
 ## Output Format
 
