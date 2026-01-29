@@ -81,14 +81,19 @@ Filter out skills that don't actually apply.
 
 **Step 4: Suggest skills to user**
 
-Present relevant skills via AskUserQuestion:
+Present ALL relevant skills via AskUserQuestion - don't artificially limit to 3.
+A complex codebase may benefit from 5-10+ skills.
 
 ```
-Based on this codebase (SurrealDB + LLM pipelines + Python), these skills may help:
+Based on this codebase (SurrealDB + LLM pipelines + FastAPI + Python), these skills may help:
 
-1. surrealdb-idempotent-schema - Make schema migrations repeatable
-2. llm-structured-output-failure - Debug LLM output parsing failures
-3. llm-pipeline-cost-diagnosis - Track per-stage API costs
+1. surrealdb - SurrealDB patterns and queries
+2. surrealdb-idempotent-schema - Make schema migrations repeatable
+3. llm-structured-output-failure - Debug LLM output parsing failures
+4. llm-pipeline-cost-diagnosis - Track per-stage API costs
+5. llm-pipeline-schema-field-drift - Fix silently dropped fields
+6. fastapi-templates - FastAPI endpoint patterns
+7. python-dict-get-json-null - Fix NoneType iteration errors
 
 Install? (Select numbers, "all", or "skip")
 ```
@@ -251,16 +256,15 @@ directories, it should be promoted to root only (don't embed in subdirectories).
 
 **Step 3: Embed in subdirectories**
 
-For each subdirectory with relevant skills (that aren't promoted), embed:
+For each subdirectory with relevant skills (that aren't promoted), add or update
+a `## Skills` section:
 
 ```markdown
-<!-- doc-sync:skills-start -->
 ## Skills
 
 | Skill | When to use |
 |-------|-------------|
 | `surrealdb` | SurrealDB schema, queries |
-<!-- doc-sync:skills-end -->
 ```
 
 **Step 4: Embed at root**
@@ -270,7 +274,6 @@ Root gets:
 - Any skills that don't fit specific subdirectories
 
 ```markdown
-<!-- doc-sync:skills-start -->
 ## Skills
 
 | Skill | When to use |
@@ -278,7 +281,6 @@ Root gets:
 | `langgraph-docs` | LangGraph agent patterns |
 | `surrealdb` | SurrealDB schema, queries |
 | `test-report-debugging` | Integration test debugging |
-<!-- doc-sync:skills-end -->
 ```
 
 ## Output Format
