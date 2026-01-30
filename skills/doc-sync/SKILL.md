@@ -273,14 +273,18 @@ Verify every code directory has been considered.
 
 **Step 3: Embed in subdirectories**
 
-Add a `## Skills` section to each subdirectory's agent file with its relevant skills:
+For each subdirectory's agent file:
+1. FIND any existing `## Skills` or `## REQUIRED SKILLS` section (anywhere in file)
+2. REMOVE it completely (including old markers like `<!-- doc-sync:skills-* -->`)
+3. ADD a `## Skills` section (placement flexible - a PostToolUse hook auto-loads skills)
+
+Format with Skill() calls and brief descriptions:
 
 ```markdown
 ## Skills
 
-| Skill | When to use |
-|-------|-------------|
-| `surrealdb` | SurrealDB schema, queries |
+- Skill("surrealdb") - SurrealDB schema, queries
+- Skill("fastapi-templates") - endpoint patterns
 ```
 
 **Step 4: Calculate promotion threshold**
@@ -305,17 +309,22 @@ For any promoted skills:
 
 **Step 6: Embed at root**
 
+For the root agent file:
+1. FIND any existing `## Skills` or `## REQUIRED SKILLS` section (anywhere in file)
+2. REMOVE it completely (including old markers like `<!-- doc-sync:skills-* -->`)
+3. ADD a `## Skills` section (placement flexible - a PostToolUse hook auto-loads skills)
+
 Root gets:
 - All promoted skills (>80% frequency)
 - Any skills that don't fit specific subdirectories
 
+Format with Skill() calls and brief descriptions:
+
 ```markdown
 ## Skills
 
-| Skill | When to use |
-|-------|-------------|
-| `surrealdb` | SurrealDB schema, queries (project-wide) |
-| `langgraph-docs` | LangGraph agent patterns |
+- Skill("surrealdb") - SurrealDB schema, queries, migrations
+- Skill("langgraph-docs") - LangGraph pipeline patterns
 ```
 
 ## Output Format
