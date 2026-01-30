@@ -276,19 +276,15 @@ Verify every code directory has been considered.
 For each subdirectory's agent file:
 1. FIND any existing `## Skills` or `## REQUIRED SKILLS` section (anywhere in file)
 2. REMOVE it completely (including old markers like `<!-- doc-sync:skills-* -->`)
-3. ADD `## REQUIRED SKILLS` at the TOP of the file (immediately after the title)
+3. ADD a `## Skills` section (placement flexible - a PostToolUse hook auto-loads skills)
 
-The skills section MUST be at the top - not buried at the bottom.
-
-Format as blocking instructions with explicit Skill() calls:
+Format with Skill() calls and brief descriptions:
 
 ```markdown
-## REQUIRED SKILLS
+## Skills
 
-Before ANY work in this directory, load these skills:
-- Skill("surrealdb")
-
-Do not proceed until loaded.
+- Skill("surrealdb") - SurrealDB schema, queries
+- Skill("fastapi-templates") - endpoint patterns
 ```
 
 **Step 4: Calculate promotion threshold**
@@ -316,24 +312,19 @@ For any promoted skills:
 For the root agent file:
 1. FIND any existing `## Skills` or `## REQUIRED SKILLS` section (anywhere in file)
 2. REMOVE it completely (including old markers like `<!-- doc-sync:skills-* -->`)
-3. ADD `## REQUIRED SKILLS` at the TOP of the file (immediately after the title)
-
-The skills section MUST be at the top - not buried at the bottom.
+3. ADD a `## Skills` section (placement flexible - a PostToolUse hook auto-loads skills)
 
 Root gets:
 - All promoted skills (>80% frequency)
 - Any skills that don't fit specific subdirectories
 
-Format as blocking instructions:
+Format with Skill() calls and brief descriptions:
 
 ```markdown
-## REQUIRED SKILLS
+## Skills
 
-Before ANY work in this project, load these skills:
-- Skill("surrealdb")
-- Skill("langgraph-docs")
-
-Do not proceed until loaded.
+- Skill("surrealdb") - SurrealDB schema, queries, migrations
+- Skill("langgraph-docs") - LangGraph pipeline patterns
 ```
 
 ## Output Format
